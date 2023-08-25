@@ -21,13 +21,67 @@ string connectionString = app.Configuration.GetConnectionString("AZURE_SQL_CONNE
 
 // string tableQuery = "CREATE TABLE MinesweeperGames (id uniqueidentifier NOT NULL, board char(256) NOT NULL, timestart bigint, timeend bigint, completed bit);";
 
-static string GetNewBoard()
+int[] adjacentLocations = { -17, -16, -15, -1, 1, 15, 16, 17 };
+
+int GetAdjacentMines(int index, char[] board)
 {
-    // create a string to insert as the new board.
-    return "";
+    int returnVal = 0;
+    for(int i = 0; i < adjacentLocations.Length; i++)
+    {
+        int adjacentIndex = index + adjacentLocations[i];
+        if(adjacentIndex >= 0 && adjacentIndex < board.Length)
+        {
+            if(board[adjacentIndex] == ':') returnVal++;
+        }
+    }
+    return returnVal;
 }
 
-app.MapGet("/newGame", () => {
+string GetNewBoard(int firstMove)
+{
+    // Generate board with 50 mines
+    char[] board;
+    if (firstMove > 128) board = (new string(':', 50) + new string('@', 206)).ToCharArray();
+    else board = (new string('@', 206) + new string(':', 50)).ToCharArray();
+
+    // Randomize locations of the mines
+    int currentIndex = board.Length, randomIndex;
+    char temp;
+    Random rnd = new();
+    List<int> protectedIndexes = new List<int> { firstMove };
+    for (int i = 0; i < adjacentLocations.Length; i++) protectedIndexes.Add(adjacentLocations[i] + firstMove);
+    while (currentIndex != 0)
+    {
+        randomIndex = rnd.Next(currentIndex);
+        if (protectedIndexes.Contains(randomIndex)) continue;
+        currentIndex--;
+        if (protectedIndexes.Contains(currentIndex)) continue;
+
+        temp = board[currentIndex];
+        board[currentIndex] = board[randomIndex];
+        board[randomIndex] = temp;
+    }
+
+    // Add numbers for the amount of ajacent mines
+    for (int i = 0; i < board.Length; i++)
+    {
+        if (board[i] == ':') continue;
+        int asciiVal = board[i] + GetAdjacentMines(i, board);
+        board[i] = (char)asciiVal;
+    }
+
+    return new string(board);
+}
+
+static long GetMillisecondsSinceEpoch(DateTime dateTime)
+{
+    DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+    TimeSpan timeSpan = dateTime - epoch;
+    return (long)timeSpan.TotalMilliseconds;
+}
+
+app.MapPost("/newGame", (int firstMove) =>
+{
     using var conn = new SqlConnection(connectionString);
     conn.Open();
 
@@ -35,11 +89,12 @@ app.MapGet("/newGame", () => {
 
     // create a new game with a post query
     var command = new SqlCommand(
-        "INSERT INTO MinesweeperGames (id, board) VALUES (@id, @board)", conn
+        "INSERT INTO MinesweeperGames (id, board, timestart) VALUES (@id, @board, @timestart)", conn
     );
     command.Parameters.Clear();
     command.Parameters.AddWithValue("id", uuid);
-    command.Parameters.AddWithValue("@board", GetNewBoard());
+    command.Parameters.AddWithValue("@board", GetNewBoard(firstMove));
+    command.Parameters.AddWithValue("@timestart", GetMillisecondsSinceEpoch(DateTime.UtcNow));
 
     using SqlDataReader reader = command.ExecuteReader();
 
