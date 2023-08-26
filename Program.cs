@@ -22,12 +22,15 @@ string connectionString = app.Configuration.GetConnectionString("AZURE_SQL_CONNE
 // string tableQuery = "CREATE TABLE MinesweeperGames (id uniqueidentifier NOT NULL, board char(256) NOT NULL, timestart bigint, timeend bigint, completed bit);";
 
 int[] adjacentLocations = { -17, -16, -15, -1, 1, 15, 16, 17 };
-
+int[] leftExceptions = {-17, -1, 15};
+int[] rightExceptions = {-15, 1, 17};
 int GetAdjacentMines(int index, char[] board)
 {
     int returnVal = 0;
     for (int i = 0; i < adjacentLocations.Length; i++)
     {
+        if (index % 16 == 0 && leftExceptions.Contains(adjacentLocations[i])) continue;
+        if (index % 16 == 15 && rightExceptions.Contains(adjacentLocations[i])) continue;
         int adjacentIndex = index + adjacentLocations[i];
         if (adjacentIndex >= 0 && adjacentIndex < board.Length)
         {
