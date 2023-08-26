@@ -26,12 +26,12 @@ int[] adjacentLocations = { -17, -16, -15, -1, 1, 15, 16, 17 };
 int GetAdjacentMines(int index, char[] board)
 {
     int returnVal = 0;
-    for(int i = 0; i < adjacentLocations.Length; i++)
+    for (int i = 0; i < adjacentLocations.Length; i++)
     {
         int adjacentIndex = index + adjacentLocations[i];
-        if(adjacentIndex >= 0 && adjacentIndex < board.Length)
+        if (adjacentIndex >= 0 && adjacentIndex < board.Length)
         {
-            if(board[adjacentIndex] == ':') returnVal++;
+            if (board[adjacentIndex] == ':') returnVal++;
         }
     }
     return returnVal;
@@ -87,12 +87,11 @@ app.MapPost("/newGame", (int firstMove) =>
 
     Guid uuid = Guid.NewGuid();
 
-    // create a new game with a post query
     var command = new SqlCommand(
         "INSERT INTO MinesweeperGames (id, board, timestart) VALUES (@id, @board, @timestart)", conn
     );
     command.Parameters.Clear();
-    command.Parameters.AddWithValue("id", uuid);
+    command.Parameters.AddWithValue("@id", uuid);
     command.Parameters.AddWithValue("@board", GetNewBoard(firstMove));
     command.Parameters.AddWithValue("@timestart", GetMillisecondsSinceEpoch(DateTime.UtcNow));
 
@@ -101,5 +100,40 @@ app.MapPost("/newGame", (int firstMove) =>
     return uuid;
 })
 .WithName("New Game");
+
+app.MapGet("/boardDev", (Guid uuid) =>
+{
+    using var conn = new SqlConnection(connectionString);
+    conn.Open();
+
+    var command = new SqlCommand(
+        "SELECT board FROM MinesweeperGames WHERE id = @id", conn
+    );
+    command.Parameters.Clear();
+    command.Parameters.AddWithValue("@id", uuid);
+
+    using SqlDataReader reader = command.ExecuteReader();
+
+    string[] board = new string[16];
+    for(int i = 0; i < 16; i++)
+    {
+        board[i] = "";
+    }
+
+    if (!reader.HasRows)
+    {
+        return board;
+    }
+    
+    reader.Read();
+    char[] rawBoard = reader.GetString(0).ToCharArray();
+    for (int i = 0; i < rawBoard.Length; i++)
+    {
+        board[i/16] += rawBoard[i];
+    }
+
+    return board;
+})
+.WithName("Dev Get Board");
 
 app.Run();
