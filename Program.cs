@@ -56,8 +56,8 @@ string GetNewBoard(int firstMove)
     while (currentIndex != 0)
     {
         randomIndex = rnd.Next(currentIndex);
-        if (protectedIndexes.Contains(randomIndex)) continue;
         currentIndex--;
+        if (protectedIndexes.Contains(randomIndex)) continue;
         if (protectedIndexes.Contains(currentIndex)) continue;
 
         temp = board[currentIndex];
