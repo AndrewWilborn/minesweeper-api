@@ -104,6 +104,27 @@ app.MapPost("/newGame", (int firstMove) =>
 })
 .WithName("New Game");
 
+app.MapPost("/move", (int move, Guid uuid) => {
+    // one big sql query that returns the board after the move has been made
+    using var conn = new SqlConnection(connectionString);
+    conn.Open();
+
+    var command = new SqlCommand("DECLARE @board AS char(256); SELECT @board = board FROM [dbo].[MinesweeperGames] WHERE id = @id; IF(ASCII(SUBSTRING(@board, @move, 1)) > 63) BEGIN SET @board = STUFF(@board, @move, 1, CHAR(ASCII(SUBSTRING(@board, @move, 1)) - 16)); END UPDATE [dbo].[MinesweeperGames] SET board = @board WHERE id = @id; SELECT board from [dbo].[MinesweeperGames] WHERE id = @id;", conn);
+    command.Parameters.Clear();
+    command.Parameters.AddWithValue("@move", move);
+    command.Parameters.AddWithValue("@id", uuid);
+    using SqlDataReader reader = command.ExecuteReader();
+
+    if(!reader.HasRows)
+    {
+        return "";
+    }
+
+    reader.Read();
+    return reader.GetString(0);
+})
+.WithName("Move");
+
 app.MapGet("/boardDev", (Guid uuid) =>
 {
     using var conn = new SqlConnection(connectionString);
