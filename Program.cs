@@ -83,6 +83,18 @@ static long GetMillisecondsSinceEpoch(DateTime dateTime)
     return (long)timeSpan.TotalMilliseconds;
 }
 
+static string ProcessBoard(string oldBoard)
+{
+    char[] returnBoard = oldBoard.ToCharArray();
+
+    for(int i = 0; i < returnBoard.Length; i++)
+    {
+        if((int)returnBoard[i] > 63) returnBoard[i] = '_';
+    }
+
+    return new string(returnBoard);
+}
+
 app.MapPost("/newGame", (int firstMove) =>
 {
     using var conn = new SqlConnection(connectionString);
@@ -104,7 +116,8 @@ app.MapPost("/newGame", (int firstMove) =>
 })
 .WithName("New Game");
 
-app.MapPost("/move", (int move, Guid uuid) => {
+app.MapPost("/move", (int move, Guid uuid) => 
+{
     // one big sql query that returns the board after the move has been made
     using var conn = new SqlConnection(connectionString);
     conn.Open();
@@ -121,7 +134,7 @@ app.MapPost("/move", (int move, Guid uuid) => {
     }
 
     reader.Read();
-    return reader.GetString(0);
+    return ProcessBoard(reader.GetString(0));
 })
 .WithName("Move");
 
