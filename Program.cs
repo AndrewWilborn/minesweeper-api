@@ -102,7 +102,7 @@ static string ProcessBoard(string oldBoard)
 
     for (int i = 0; i < returnBoard.Length; i++)
     {
-        if ((int)returnBoard[i] > 63) returnBoard[i] = '_';
+        if ((int)returnBoard[i] > 57) returnBoard[i] = ' ';
     }
 
     return new string(returnBoard);
@@ -143,11 +143,13 @@ app.MapPost("/move", (int move, Guid uuid) =>
 
     if (!reader.HasRows)
     {
-        return "";
+        return new MoveResponse {Board = ""};
     }
 
     reader.Read();
-    return ProcessBoard(reader.GetString(0));
+    string board = ProcessBoard(reader.GetString(0));
+    var response = new MoveResponse {Board = board};
+    return response;
 })
 .WithName("Move");
 
@@ -187,3 +189,8 @@ app.MapGet("/boardDev", (Guid uuid) =>
 .WithName("Dev Get Board");
 
 app.Run();
+
+public class MoveResponse
+{
+    public string Board{ get; set; }
+}
