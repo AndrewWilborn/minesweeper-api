@@ -2,6 +2,17 @@ using Microsoft.OpenApi.Models;
 using Microsoft.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: "_PolicyName",
+        policy =>
+        {
+            policy
+            .AllowAnyHeader()
+            .AllowAnyOrigin()
+            .AllowAnyMethod();
+        });
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -16,14 +27,16 @@ app.UseSwaggerUI(c =>
 });
 
 app.UseHttpsRedirection();
+app.UseRouting();
+app.UseCors("_PolicyName");
 
 string connectionString = app.Configuration.GetConnectionString("AZURE_SQL_CONNECTIONSTRING")!;
 
 // string tableQuery = "CREATE TABLE MinesweeperGames (id uniqueidentifier NOT NULL, board char(256) NOT NULL, timestart bigint, timeend bigint, completed bit);";
 
 int[] adjacentLocations = { -17, -16, -15, -1, 1, 15, 16, 17 };
-int[] leftExceptions = {-17, -1, 15};
-int[] rightExceptions = {-15, 1, 17};
+int[] leftExceptions = { -17, -1, 15 };
+int[] rightExceptions = { -15, 1, 17 };
 int GetAdjacentMines(int index, char[] board)
 {
     int returnVal = 0;
@@ -87,9 +100,9 @@ static string ProcessBoard(string oldBoard)
 {
     char[] returnBoard = oldBoard.ToCharArray();
 
-    for(int i = 0; i < returnBoard.Length; i++)
+    for (int i = 0; i < returnBoard.Length; i++)
     {
-        if((int)returnBoard[i] > 63) returnBoard[i] = '_';
+        if ((int)returnBoard[i] > 63) returnBoard[i] = '_';
     }
 
     return new string(returnBoard);
@@ -116,7 +129,7 @@ app.MapPost("/newGame", (int firstMove) =>
 })
 .WithName("New Game");
 
-app.MapPost("/move", (int move, Guid uuid) => 
+app.MapPost("/move", (int move, Guid uuid) =>
 {
     // one big sql query that returns the board after the move has been made
     using var conn = new SqlConnection(connectionString);
@@ -128,7 +141,7 @@ app.MapPost("/move", (int move, Guid uuid) =>
     command.Parameters.AddWithValue("@id", uuid);
     using SqlDataReader reader = command.ExecuteReader();
 
-    if(!reader.HasRows)
+    if (!reader.HasRows)
     {
         return "";
     }
@@ -152,7 +165,7 @@ app.MapGet("/boardDev", (Guid uuid) =>
     using SqlDataReader reader = command.ExecuteReader();
 
     string[] board = new string[16];
-    for(int i = 0; i < 16; i++)
+    for (int i = 0; i < 16; i++)
     {
         board[i] = "";
     }
@@ -161,12 +174,12 @@ app.MapGet("/boardDev", (Guid uuid) =>
     {
         return board;
     }
-    
+
     reader.Read();
     char[] rawBoard = reader.GetString(0).ToCharArray();
     for (int i = 0; i < rawBoard.Length; i++)
     {
-        board[i/16] += rawBoard[i];
+        board[i / 16] += rawBoard[i];
     }
 
     return board;
