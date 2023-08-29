@@ -192,5 +192,5 @@ app.Run();
 
 public class MoveResponse
 {
-    public string Board{ get; set; }
+    public required string Board{ get; set; }
 }
