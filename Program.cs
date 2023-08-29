@@ -135,7 +135,7 @@ app.MapPost("/move", (int move, Guid uuid) =>
     using var conn = new SqlConnection(connectionString);
     conn.Open();
 
-    var command = new SqlCommand("DECLARE @board AS char(256); SELECT @board = board FROM [dbo].[MinesweeperGames] WHERE id = @id; IF(ASCII(SUBSTRING(@board, @move, 1)) > 63) BEGIN SET @board = STUFF(@board, @move, 1, CHAR(ASCII(SUBSTRING(@board, @move, 1)) - 16)); END UPDATE [dbo].[MinesweeperGames] SET board = @board WHERE id = @id; SELECT board from [dbo].[MinesweeperGames] WHERE id = @id;", conn);
+    var command = new SqlCommand("DECLARE @board AS char(256); SELECT @board = board FROM [dbo].[MinesweeperGames] WHERE id = @id; IF(ASCII(SUBSTRING(@board, @move, 1)) > 57) BEGIN SET @board = STUFF(@board, @move, 1, CHAR(ASCII(SUBSTRING(@board, @move, 1)) - 16)); END UPDATE [dbo].[MinesweeperGames] SET board = @board WHERE id = @id; SELECT board from [dbo].[MinesweeperGames] WHERE id = @id;", conn);
     command.Parameters.Clear();
     command.Parameters.AddWithValue("@move", move);
     command.Parameters.AddWithValue("@id", uuid);
@@ -153,40 +153,40 @@ app.MapPost("/move", (int move, Guid uuid) =>
 })
 .WithName("Move");
 
-app.MapGet("/boardDev", (Guid uuid) =>
-{
-    using var conn = new SqlConnection(connectionString);
-    conn.Open();
+// app.MapGet("/boardDev", (Guid uuid) =>
+// {
+//     using var conn = new SqlConnection(connectionString);
+//     conn.Open();
 
-    var command = new SqlCommand(
-        "SELECT board FROM MinesweeperGames WHERE id = @id", conn
-    );
-    command.Parameters.Clear();
-    command.Parameters.AddWithValue("@id", uuid);
+//     var command = new SqlCommand(
+//         "SELECT board FROM MinesweeperGames WHERE id = @id", conn
+//     );
+//     command.Parameters.Clear();
+//     command.Parameters.AddWithValue("@id", uuid);
 
-    using SqlDataReader reader = command.ExecuteReader();
+//     using SqlDataReader reader = command.ExecuteReader();
 
-    string[] board = new string[16];
-    for (int i = 0; i < 16; i++)
-    {
-        board[i] = "";
-    }
+//     string[] board = new string[16];
+//     for (int i = 0; i < 16; i++)
+//     {
+//         board[i] = "";
+//     }
 
-    if (!reader.HasRows)
-    {
-        return board;
-    }
+//     if (!reader.HasRows)
+//     {
+//         return board;
+//     }
 
-    reader.Read();
-    char[] rawBoard = reader.GetString(0).ToCharArray();
-    for (int i = 0; i < rawBoard.Length; i++)
-    {
-        board[i / 16] += rawBoard[i];
-    }
+//     reader.Read();
+//     char[] rawBoard = reader.GetString(0).ToCharArray();
+//     for (int i = 0; i < rawBoard.Length; i++)
+//     {
+//         board[i / 16] += rawBoard[i];
+//     }
 
-    return board;
-})
-.WithName("Dev Get Board");
+//     return board;
+// })
+// .WithName("Dev Get Board");
 
 app.Run();
 
