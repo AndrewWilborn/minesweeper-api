@@ -129,13 +129,13 @@ app.MapPost("/newGame", (int firstMove) =>
 })
 .WithName("New Game");
 
-app.MapPost("/move", (int move, Guid uuid) =>
+string doMove(int move, Guid uuid)
 {
-    // one big sql query that returns the board after the move has been made
+    Console.WriteLine(move);
     using var conn = new SqlConnection(connectionString);
     conn.Open();
-
-    var command = new SqlCommand("DECLARE @board AS char(256); SELECT @board = board FROM [dbo].[MinesweeperGames] WHERE id = @id; IF(ASCII(SUBSTRING(@board, @move, 1)) > 57) BEGIN SET @board = STUFF(@board, @move, 1, CHAR(ASCII(SUBSTRING(@board, @move, 1)) - 16)); END UPDATE [dbo].[MinesweeperGames] SET board = @board WHERE id = @id; SELECT board from [dbo].[MinesweeperGames] WHERE id = @id;", conn);
+    string script = File.ReadAllText("./move.sql");
+    var command = new SqlCommand(script, conn);
     command.Parameters.Clear();
     command.Parameters.AddWithValue("@move", move);
     command.Parameters.AddWithValue("@id", uuid);
@@ -143,11 +143,24 @@ app.MapPost("/move", (int move, Guid uuid) =>
 
     if (!reader.HasRows)
     {
-        return new MoveResponse {Board = ""};
+        return "";
     }
 
     reader.Read();
     string board = ProcessBoard(reader.GetString(0));
+    if(reader.GetString(1) != "@") return board;
+    for(int i = 0; i < adjacentLocations.Length; i++){
+        if (move % 16 == 0 && leftExceptions.Contains(adjacentLocations[i])){Console.WriteLine("left exception found"); continue;}
+        if (move % 16 == 15 && rightExceptions.Contains(adjacentLocations[i])){Console.WriteLine("right exception found"); continue;}
+        int newMove = move + adjacentLocations[i];
+        if (newMove >= 0 && newMove < board.Length) doMove(newMove, uuid);
+    }
+    return doMove(move, uuid);
+}
+
+app.MapPost("/move", (int move, Guid uuid) =>
+{
+    string board = doMove(move, uuid);
     var response = new MoveResponse {Board = board};
     return response;
 })
