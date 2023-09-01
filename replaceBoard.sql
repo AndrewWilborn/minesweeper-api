@@ -1,0 +1,1 @@
+UPDATE [dbo].[MinesweeperGames] SET board = @newBoard WHERE id = @id

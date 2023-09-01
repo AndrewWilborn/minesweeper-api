@@ -129,9 +129,42 @@ app.MapPost("/newGame", (int firstMove) =>
 })
 .WithName("New Game");
 
-string doMove(int move, Guid uuid)
+void uploadNewBoard(string newBoard, Guid uuid)
 {
-    Console.WriteLine(move);
+    using var conn = new SqlConnection(connectionString);
+    conn.Open();
+    string script = File.ReadAllText("./replaceBoard.sql");
+    var command = new SqlCommand(script, conn);
+    command.Parameters.Clear();
+    command.Parameters.AddWithValue("@newBoard", newBoard);
+    command.Parameters.AddWithValue("@id", uuid);
+    command.ExecuteReader();
+}
+
+char[] revealBlanks(char[] board, int move)
+{
+    for(int i = 0; i < adjacentLocations.Length; i++)
+    {
+        int nextMove = move+adjacentLocations[i];
+        if (!(nextMove >= 0 && nextMove < board.Length)) continue;
+        if(move % 16 == 0 && leftExceptions.Contains(adjacentLocations[i])) continue;
+        if(move % 16 == 15 && rightExceptions.Contains(adjacentLocations[i])) continue;
+        if(board[nextMove] < 57) continue;
+        if(board[nextMove] == '@')
+        {
+            board[nextMove] = (char)(board[nextMove] - 16);
+            revealBlanks(board, nextMove);
+        } else
+        {
+            board[nextMove] = (char)(board[nextMove] - 16);
+        }
+
+    }
+    return board;
+}
+
+app.MapPost("/move", (int move, Guid uuid) =>
+{
     using var conn = new SqlConnection(connectionString);
     conn.Open();
     string script = File.ReadAllText("./move.sql");
@@ -143,25 +176,17 @@ string doMove(int move, Guid uuid)
 
     if (!reader.HasRows)
     {
-        return "";
+        return new MoveResponse { Board = "" };
     }
 
     reader.Read();
-    string board = ProcessBoard(reader.GetString(0));
-    if(reader.GetString(1) != "@") return board;
-    for(int i = 0; i < adjacentLocations.Length; i++){
-        if (move % 16 == 0 && leftExceptions.Contains(adjacentLocations[i])){Console.WriteLine("left exception found"); continue;}
-        if (move % 16 == 15 && rightExceptions.Contains(adjacentLocations[i])){Console.WriteLine("right exception found"); continue;}
-        int newMove = move + adjacentLocations[i];
-        if (newMove >= 0 && newMove < board.Length) doMove(newMove, uuid);
-    }
-    return doMove(move, uuid);
-}
-
-app.MapPost("/move", (int move, Guid uuid) =>
-{
-    string board = doMove(move, uuid);
-    var response = new MoveResponse {Board = board};
+    string board = reader.GetString(0);
+    if (reader.GetString(1) == "@")
+    {
+        board = new string(revealBlanks(board.ToCharArray(), move - 1));
+        uploadNewBoard(board, uuid);
+    };
+    var response = new MoveResponse { Board = ProcessBoard(board) };
     return response;
 })
 .WithName("Move");
@@ -205,5 +230,5 @@ app.Run();
 
 public class MoveResponse
 {
-    public required string Board{ get; set; }
+    public required string Board { get; set; }
 }
