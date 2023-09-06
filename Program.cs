@@ -170,7 +170,7 @@ app.MapPost("/move", (int move, Guid uuid) =>
     // string script = File.ReadAllText("./move.sql");
     var command = new SqlCommand("DECLARE @board AS char(256) SELECT @board = board FROM [dbo].[MinesweeperGames] WHERE id = @id UPDATE [dbo].[MinesweeperGames] SET oldChar = SUBSTRING(@board, @move, 1) WHERE id = @id IF(ASCII(SUBSTRING(@board, @move, 1)) > 57) BEGIN SET @board = STUFF(@board, @move, 1, CHAR(ASCII(SUBSTRING(@board, @move, 1)) - 16)) UPDATE [dbo].[MinesweeperGames] SET board = @board WHERE id = @id END SELECT board, oldChar FROM [dbo].[MinesweeperGames] WHERE id = @id", conn);
     command.Parameters.Clear();
-    command.Parameters.AddWithValue("@move", move);
+    command.Parameters.AddWithValue("@move", move + 1);
     command.Parameters.AddWithValue("@id", uuid);
     using SqlDataReader reader = command.ExecuteReader();
 
@@ -183,7 +183,7 @@ app.MapPost("/move", (int move, Guid uuid) =>
     string board = reader.GetString(0);
     if (reader.GetString(1) == "@")
     {
-        board = new string(revealBlanks(board.ToCharArray(), move - 1));
+        board = new string(revealBlanks(board.ToCharArray(), move));
         uploadNewBoard(board, uuid);
     };
     var response = new MoveResponse { Board = ProcessBoard(board) };
