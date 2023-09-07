@@ -141,6 +141,11 @@ void uploadNewBoard(string newBoard, Guid uuid)
     command.ExecuteReader();
 }
 
+void uploadFinishTime(long time, Guid uuid)
+{
+    Console.WriteLine("FINISHED GAME");
+}
+
 char[] revealBlanks(char[] board, int move)
 {
     for(int i = 0; i < adjacentLocations.Length; i++)
@@ -163,6 +168,20 @@ char[] revealBlanks(char[] board, int move)
     return board;
 }
 
+Boolean isFinished(string board)
+{
+    string[] strings = {"@", "A", "B", "C", "D", "E", "F", "G", "H"};
+    for(int i = 0; i < strings.Length; i++)
+    {
+        if(board.Contains(strings[i]))
+        {
+            Console.WriteLine("Checked for finished game, false");
+            return false;
+        }
+    }
+    return true;
+}
+
 app.MapPost("/move", (int move, Guid uuid) =>
 {
     using var conn = new SqlConnection(connectionString);
@@ -176,7 +195,7 @@ app.MapPost("/move", (int move, Guid uuid) =>
 
     if (!reader.HasRows)
     {
-        return new MoveResponse { Board = "" };
+        return new MoveResponse { Board = "", IsFinished = false };
     }
 
     reader.Read();
@@ -186,7 +205,11 @@ app.MapPost("/move", (int move, Guid uuid) =>
         board = new string(revealBlanks(board.ToCharArray(), move));
         uploadNewBoard(board, uuid);
     };
-    var response = new MoveResponse { Board = ProcessBoard(board) };
+    if(isFinished(board))
+    {
+        uploadFinishTime(GetMillisecondsSinceEpoch(DateTime.UtcNow) ,uuid);
+    }
+    var response = new MoveResponse { Board = ProcessBoard(board),  IsFinished = false};
     return response;
 })
 .WithName("Move");
@@ -231,4 +254,5 @@ app.Run();
 public class MoveResponse
 {
     public required string Board { get; set; }
+    public required Boolean IsFinished { get; set; }
 }
