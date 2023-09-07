@@ -133,7 +133,6 @@ void uploadNewBoard(string newBoard, Guid uuid)
 {
     using var conn = new SqlConnection(connectionString);
     conn.Open();
-    // string script = File.ReadAllText("./replaceBoard.sql");
     var command = new SqlCommand("UPDATE [dbo].[MinesweeperGames] SET board = @newBoard WHERE id = @id", conn);
     command.Parameters.Clear();
     command.Parameters.AddWithValue("@newBoard", newBoard);
@@ -143,7 +142,13 @@ void uploadNewBoard(string newBoard, Guid uuid)
 
 void uploadFinishTime(long time, Guid uuid)
 {
-    Console.WriteLine("FINISHED GAME");
+    using var conn = new SqlConnection(connectionString);
+    conn.Open();
+    var command = new SqlCommand("UPDATE [dbo].[MinesweeperGames] SET timeend = @finishtime, completed = 1 WHERE id = @id", conn);
+    command.Parameters.Clear();
+    command.Parameters.AddWithValue("@finishtime", time);
+    command.Parameters.AddWithValue("@id", uuid);
+    command.ExecuteReader();
 }
 
 char[] revealBlanks(char[] board, int move)
@@ -173,11 +178,7 @@ Boolean isFinished(string board)
     string[] strings = {"@", "A", "B", "C", "D", "E", "F", "G", "H"};
     for(int i = 0; i < strings.Length; i++)
     {
-        if(board.Contains(strings[i]))
-        {
-            Console.WriteLine("Checked for finished game, false");
-            return false;
-        }
+        if(board.Contains(strings[i])) return false;
     }
     return true;
 }
