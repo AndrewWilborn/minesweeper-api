@@ -144,9 +144,18 @@ void uploadFinishTime(long time, Guid uuid)
 {
     using var conn = new SqlConnection(connectionString);
     conn.Open();
-    var command = new SqlCommand("UPDATE [dbo].[MinesweeperGames] SET timeend = @finishtime, completed = 1 WHERE id = @id", conn);
+    var command = new SqlCommand("UPDATE [dbo].[MinesweeperGames] SET timeend = @finishtime WHERE id = @id", conn);
     command.Parameters.Clear();
     command.Parameters.AddWithValue("@finishtime", time);
+    command.Parameters.AddWithValue("@id", uuid);
+    command.ExecuteReader();
+}
+
+void setBoardComplete(Guid uuid){
+        using var conn = new SqlConnection(connectionString);
+    conn.Open();
+    var command = new SqlCommand("UPDATE [dbo].[MinesweeperGames] SET completed = 1 WHERE id = @id", conn);
+    command.Parameters.Clear();
     command.Parameters.AddWithValue("@id", uuid);
     command.ExecuteReader();
 }
@@ -196,7 +205,7 @@ app.MapPost("/move", (int move, Guid uuid) =>
 
     if (!reader.HasRows)
     {
-        return new MoveResponse { Board = "", IsFinished = false };
+        return new MoveResponse { Board = "", IsFinished = false, Victory = false };
     }
 
     reader.Read();
@@ -206,12 +215,21 @@ app.MapPost("/move", (int move, Guid uuid) =>
         board = new string(revealBlanks(board.ToCharArray(), move));
         uploadNewBoard(board, uuid);
     };
+
+    if (reader.GetString(1) == ":") // Will execute if the player clicked a mine
+    {
+        uploadFinishTime(GetMillisecondsSinceEpoch(DateTime.UtcNow) ,uuid);
+         return new MoveResponse { Board = ProcessBoard(board),  IsFinished = true, Victory = false};
+    }
+
     if(isFinished(board))
     {
         uploadFinishTime(GetMillisecondsSinceEpoch(DateTime.UtcNow) ,uuid);
+        setBoardComplete(uuid);
+        return new MoveResponse { Board = ProcessBoard(board),  IsFinished = true, Victory = true};
     }
-    var response = new MoveResponse { Board = ProcessBoard(board),  IsFinished = false};
-    return response;
+
+    return new MoveResponse { Board = ProcessBoard(board),  IsFinished = false, Victory = false};
 })
 .WithName("Move");
 
@@ -256,4 +274,5 @@ public class MoveResponse
 {
     public required string Board { get; set; }
     public required Boolean IsFinished { get; set; }
+    public required Boolean Victory { get; set; }
 }
