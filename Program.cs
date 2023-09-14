@@ -268,6 +268,30 @@ app.MapPost("/move", (int move, Guid uuid) =>
 // })
 // .WithName("Dev Get Board");
 
+app.MapGet("/time", (Guid uuid) => 
+{
+    using var conn = new SqlConnection(connectionString);
+    conn.Open();
+
+    var command = new SqlCommand(
+        "SELECT timestart, timeend FROM MinesweeperGames WHERE id = @id", conn
+    );
+    command.Parameters.Clear();
+    command.Parameters.AddWithValue("@id", uuid);
+
+    using SqlDataReader reader = command.ExecuteReader();
+
+    if (!reader.HasRows)
+    {
+        return new TimeResponse{Time = 0};
+    }
+
+    reader.Read();
+    long finishTime = reader.GetInt64(1) - reader.GetInt64(0);
+    return new TimeResponse{Time = finishTime};
+})
+.WithName("Get Time");
+
 app.Run();
 
 public class MoveResponse
@@ -275,4 +299,9 @@ public class MoveResponse
     public required string Board { get; set; }
     public required Boolean IsFinished { get; set; }
     public required Boolean Victory { get; set; }
+}
+
+public class TimeResponse
+{
+    public required long Time { get; set; }
 }
